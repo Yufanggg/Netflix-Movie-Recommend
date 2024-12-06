@@ -83,25 +83,26 @@ class NetflixSimiarlity:
 
 
 # testing code for the signature_matrix
-user_movie_matrix = np.array([
-    [1, 0, 1, 0],  # User 1 rated Movie 1 and Movie 3
-    [0, 1, 0, 1],  # User 2 rated Movie 2 and Movie 4
-    [1, 0, 0, 1],  # User 3 rated Movie 1 and Movie 4
-    [0, 1, 1, 0],  # User 4 rated Movie 2 and Movie 3
-    [1, 1, 0, 0],  # User 5 rated Movie 1 and Movie 2
-])
+# np.random.seed(123456)
+# user_movie_matrix = np.array([
+#     [1, 0, 1, 0],  # User 1 rated Movie 1 and Movie 3
+#     [0, 1, 0, 1],  # User 2 rated Movie 2 and Movie 4
+#     [1, 0, 0, 1],  # User 3 rated Movie 1 and Movie 4
+#     [0, 1, 1, 0],  # User 4 rated Movie 2 and Movie 3
+#     [1, 1, 0, 0],  # User 5 rated Movie 1 and Movie 2
+# ])
 
-# Create an instance of SignatureMatrixCreator
-creator = NetflixSimiarlity(user_movie_matrix)
+# # Create an instance of SignatureMatrixCreator
+# creator = NetflixSimiarlity(user_movie_matrix)
 
-# Create the signature matrix with 3 permutations
-creator.create_signature_matrix(permutationNum=3)
-print("&"*30)
-print(creator.signature_matrix.shape[0])
+# # Create the signature matrix with 3 permutations
+# creator.create_signature_matrix(permutationNum=3)
+# print("&"*30)
+# print(creator.signature_matrix.shape[0])
 
-creator.bands_hashing(bandNum=3, rowNum=1)
-print(creator.candidate_pairs)
-print(creator.Jaccard_simiarlity(threshold=0))
+# creator.bands_hashing(bandNum=3, rowNum=1)
+# print(creator.candidate_pairs)
+# print(creator.Jaccard_simiarlity(threshold=0))
 
 
 

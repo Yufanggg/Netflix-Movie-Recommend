@@ -53,8 +53,9 @@ if __name__ == '__main__':
     print("this is my user_movie_matrix")
     print(user_movie_matrix)
     movie_user_matrix = user_movie_matrix.T
+    NetflixSimiarlity_user = NetflixSimiarlity(movie_user_matrix)
+    NetflixSimiarlity_user.create_signature_matrix(permutationNum = 1000)
+    NetflixSimiarlity_user.bands_hashing()
+    filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
 
-
-    signature_matrix=minhash(user_movie_matrix,seed)
-    print(signature_matrix[0])
-    print(len(signature_matrix))
+    print(filtered_Jaccard)
