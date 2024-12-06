@@ -1,0 +1,59 @@
+
+import numpy as np
+from scipy.sparse import coo_matrix, save_npz, load_npz
+import hashlib
+
+# from minhash import Minhash
+
+
+def create_user_movie_matrix(data):
+    # get lenth of users and movie
+    # get lenth of users and movie
+    has_nan = np.isnan(data).any()
+    if has_nan:
+        print("The array contains NaN values.")
+    else:
+        print("The array does not contain any NaN values.")
+    
+    userlen=len(np.unique(data[:,0])) + 1
+    movielen=len(np.unique(data[:,1])) + 1
+    # print(userlen,movielen)
+    user = data[:,0]
+    movie = data[:,1]
+    Rating = np.ones_like(data[:,2])# make the value become binary
+    user_movie = coo_matrix((Rating, (user, movie)), shape = (userlen, movielen))
+    #user_movie_matrix = user_movie.toarray()
+
+    save_npz("user_movie.npz", user_movie)
+    return user_movie
+
+# convert  value in every row to a 128 array ,then get a signature matrix
+# def minhash(data,seed):
+#     similaruser=[]
+
+#     for row in data:
+#         m=Minhash(seed=seed)
+#         # upodate hasevalue in one row
+#         for index in row.indices:
+#             m.update(str(index).encode('utf-8'))
+#         similaruser.append(m)
+#     return similaruser
+
+#  a b
+# a[1,2
+# b 1,2]
+
+if __name__ == '__main__':
+    seed=42
+    data = np.load('user_movie_rating.npy')
+    user_movie = create_user_movie_matrix(data)
+    user_movie_matrix = user_movie.toarray()
+    # Now you can save it or perform operations as needed
+    # user_movie = load_npz("./user_movie.npz")
+
+    print("this is my user_movie_matrix")
+    print(user_movie_matrix)
+
+    signature_matrix=minhash(user_movie_matrix,seed)
+    print(signature_matrix[0])
+    print(len(signature_matrix))
