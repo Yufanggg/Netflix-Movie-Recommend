@@ -2,8 +2,7 @@
 import numpy as np
 from scipy.sparse import coo_matrix, save_npz, load_npz
 import hashlib
-
-# from minhash import Minhash
+import NetflixSimiarlity
 
 
 def create_user_movie_matrix(data):
@@ -44,7 +43,7 @@ def create_user_movie_matrix(data):
 # b 1,2]
 
 if __name__ == '__main__':
-    seed=42
+    np.random.seed(123456)
     data = np.load('user_movie_rating.npy')
     user_movie = create_user_movie_matrix(data)
     user_movie_matrix = user_movie.toarray()
@@ -53,6 +52,8 @@ if __name__ == '__main__':
 
     print("this is my user_movie_matrix")
     print(user_movie_matrix)
+    movie_user_matrix = user_movie_matrix.T
+
 
     signature_matrix=minhash(user_movie_matrix,seed)
     print(signature_matrix[0])

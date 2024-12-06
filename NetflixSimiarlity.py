@@ -2,6 +2,7 @@
 import numpy as np
 import hashlib
 import random
+from collections import defaultdict
 
 class NetflixSimiarlity:
     def __init__(self, user_movie_matrix):
@@ -29,8 +30,10 @@ class NetflixSimiarlity:
                 if rated_users.size > 0:
                     # Take the first user (smallest index) who rated the movie
                     signature_matrix[i, col] = rated_users[0]
+        
+        self.signature_matrix = signature_matrix
 
-        return signature_matrix
+        # return signature_matrix
     
     def bands_hashing(self, bandNum, rowNum):
         """
@@ -38,14 +41,44 @@ class NetflixSimiarlity:
         bandNum and rowNum is the way to partiate the signature matrix. row number of the signature matrix = bandNum * rowNum
         """
 
-        self.signature_matrix = self.create_signature_matrix()
+        hash_tables = [defaultdict(list) for _ in range(bandNum)]  # One hash table per band
+        assert bandNum*rowNum == self.signature_matrix.shape[0]
+
         for band in range(bandNum):
             start_row = band * rowNum
             end_row = (band + 1) * rowNum
             band_signature_matrix = self.signature_matrix[start_row: end_row,]
+
+            for col_index in range(self.signature_matrix.shape[1]):
+                band_signature = tuple(band_signature_matrix[:, col_index])  # Create a tuple representing the signature for this item
+                hash_value = hash(band_signature)  # Use a hash function (e.g., Python's built-in hash function)
+                # Add the column (item index) to the hash bucket for this band
+                hash_tables[band][hash_value].append(col_index)
             
+        # find the candidate pairs
+        candidate_pairs = set()
+        for band, hash_table in enumerate(hash_tables):
+            for bucket in hash_table.values():
+                if len(bucket) > 1:
+                    # Generate all pairs of items in this bucket
+                    for i in range(len(bucket)):
+                        for j in range(i + 1, len(bucket)):
+                            candidate_pairs.add((bucket[i], bucket[j]))
+                            
+        # Output candidate pairs
+        self.candidate_pairs = candidate_pairs
 
+    def Jaccard_simiarlity(self, threshold = 0.5):
+        Jaccard_simiarlity = []
+        for (col_1, col_2) in self.candidate_pairs:
+            obj_1, obj_2 = self.user_movie_matrix[:, col_1], self.user_movie_matrix[:, col_2]
+            interction = np.sum(np.logical_and(obj_1, obj_2))
+            union = np.sum(np.logical_or(obj_1, obj_2))
+            Jaccard = interction/union
+            Jaccard_simiarlity.append((col_1, col_2, Jaccard))
 
+        filtered_Jaccard = [tup for tup in Jaccard_simiarlity if tup[2] > threshold]
+        return(filtered_Jaccard)
 
 
 
@@ -62,11 +95,13 @@ user_movie_matrix = np.array([
 creator = NetflixSimiarlity(user_movie_matrix)
 
 # Create the signature matrix with 3 permutations
-signature_matrix = creator.create_signature_matrix(permutationNum=3)
+creator.create_signature_matrix(permutationNum=3)
+print("&"*30)
+print(creator.signature_matrix.shape[0])
 
-# Output the result
-print("Signature Matrix:")
-print(signature_matrix)
+creator.bands_hashing(bandNum=3, rowNum=1)
+print(creator.candidate_pairs)
+print(creator.Jaccard_simiarlity(threshold=0))
 
 
 
