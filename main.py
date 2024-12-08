@@ -2,7 +2,8 @@
 import numpy as np
 from scipy.sparse import coo_matrix, save_npz, load_npz
 import hashlib
-import NetflixSimiarlity
+from NetflixSimiarlity import NetflixSimiarlity
+import time
 
 
 def create_user_movie_matrix(data):
@@ -44,6 +45,7 @@ def create_user_movie_matrix(data):
 
 if __name__ == '__main__':
     np.random.seed(123456)
+    start_time = time.time()
     data = np.load('user_movie_rating.npy')
     user_movie = create_user_movie_matrix(data)
     user_movie_matrix = user_movie.toarray()
@@ -54,8 +56,12 @@ if __name__ == '__main__':
     print(user_movie_matrix)
     movie_user_matrix = user_movie_matrix.T
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_matrix)
-    NetflixSimiarlity_user.create_signature_matrix(permutationNum = 1000)
-    NetflixSimiarlity_user.bands_hashing()
+    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 1000)
+    NetflixSimiarlity_user.bands_hashing(bandNum=5)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
-
+    end_time = time.time()
     print(filtered_Jaccard)
+    execution_time = end_time - start_time
+    print(f"Execution Time: {execution_time:.4f} seconds")
+
+    
