@@ -37,18 +37,19 @@ if __name__ == '__main__':
     user_movie_matrix = user_movie.toarray()
     # Now you can save it or perform operations as needed
     # user_movie = load_npz("./user_movie.npz")
-
-    print("user_movie_matrix has been obtained")
     movie_user_matrix = user_movie_matrix.T
-
-
     movie_user_sparse = csr_matrix(movie_user_matrix) # # Sparse matrix in CSR format
     del data, user_movie, user_movie_matrix, movie_user_matrix # delet the unnecessary variables to save memory
+    print("step 1: user_movie_matrix has been obtained")
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_sparse)
+    print("step 2: NetflixSimiarlity_user has been initalized")
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 100)
+    print("step 3: signature matrix has been obtained")
     NetflixSimiarlity_user.bands_hashing(bandNum=3)
+    print("step 4: candidate pairs has been obtained")
     #print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
+    print("step 5: Jaccard similarities has been obtained")
     end_time = time.time()
     print(len(filtered_Jaccard))
     ordered_filter_Jaccard = sorted([item[-1] for item in filtered_Jaccard])
@@ -56,6 +57,7 @@ if __name__ == '__main__':
     plt.scatter(range(len(filtered_Jaccard)), ordered_filter_Jaccard, colour = "blue")
     plt.xlabel("Most similar pairs")
     plt.ylabel("Last values")
+    plt.show()
 
 
     with open ("result.txt", "w") as file:
@@ -64,3 +66,5 @@ if __name__ == '__main__':
 
     execution_time = end_time - start_time
     print(f"Execution Time: {execution_time:.4f} seconds")
+
+    print("Everything is done")
