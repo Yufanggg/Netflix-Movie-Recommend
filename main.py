@@ -44,7 +44,7 @@ if __name__ == '__main__':
     print("step 2: user_movie_matrix has been obtained & NetflixSimiarlity_user start")
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_sparse)
     print("step 3: NetflixSimiarlity_user has been initalized & signature matrix obatining")
-    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 10)
+    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 2)
     print("step 4: signature matrix has been obtained & candidate pairs obtaining")
     NetflixSimiarlity_user.bands_hashing(bandNum=3)
     print("step 5: candidate pairs has been obtained & Jaccard similarity computing")

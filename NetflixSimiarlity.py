@@ -17,6 +17,7 @@ class NetflixSimiarlity:
         """
         this function intends to use the sparse matrix
         """
+        num_movie = self.user_movie_sparse.shape[1] + 1
 
         # conduct the row-base permutation
         permutated_user_movie_sparse= self.user_movie_sparse[permutation, :]
@@ -28,19 +29,21 @@ class NetflixSimiarlity:
         row_indices, col_indices = permutated_user_movie_sparse_coo.row, permutated_user_movie_sparse_coo.col
         # print(row_indices, col_indices)
         
-        # List comprehension to get the smallest row index for each unique column index
-        # Group row indices by column indices
-        col_to_row_indices = defaultdict(list)
-        for row_index, col_index in zip(row_indices, col_indices):
-            col_to_row_indices[col_index].append(row_index)
-        # Get the smallest row index for each unique column index
-        sorted_smallest_row_indices = [
-            min(col_to_row_indices[col]) for col in sorted(col_to_row_indices)]    
+        smallest_row_indices = np.full(num_movie, float('inf'))
+        # Iterate through the row and column indices
+        for row_index, col_index in zip(row_indices, col_indices):    
+            smallest_row_indices[col_index] = min(smallest_row_indices[col_index], row_index)
+        # Filter out infinite values and get the smallest row index for each column
+        sorted_smallest_row_indices = smallest_row_indices[smallest_row_indices != float('inf')]    
+        # # Group row indices by column indices
+        # col_to_row_indices = defaultdict(list)
+        # for row_index, col_index in zip(row_indices, col_indices):
+        #     col_to_row_indices[col_index].append(row_index)
+        # # Get the smallest row index for each unique column index
+        # sorted_smallest_row_indices = [
+        #     min(col_to_row_indices[col]) for col in sorted(col_to_row_indices)]    
 
-        # sorted_smallest_row_indices = [min(row_index for row_index, col_index in zip(row_indices, col_indices) 
-        #                                    if col_index == unique_col_index)
-        #                                for unique_col_index in sorted(set(col_indices))]
-        # # print(sorted_smallest_row_indices)
+
         return(sorted_smallest_row_indices)
     
     def create_signature_matrix_sparse_parallel(self, num_permutations = 100):
@@ -79,22 +82,26 @@ class NetflixSimiarlity:
 
 
     
-    def bands_hashing(self, bandNum):
+    def bands_hashing(self, bandNum, rowNum):
         """
         This function intends to obtain the possible similarity columns via LHS out of the signature matrix
         bandNum and rowNum is the way to partiate the signature matrix. row number of the signature matrix = bandNum * rowNum
         """
 
-        rowNum = self.signature_matrix.shape[0]//bandNum
-        if self.signature_matrix.shape[0] % bandNum != 0:         
-            raise ValueError("The total number of rows in signature matrix must be divisible by bandNum.")
+        
+        if self.signature_matrix.shape[0]  % bandNum != 0:
+            rowNum = self.signature_matrix.shape[0] // bandNum
         
         hash_tables = [defaultdict(list) for _ in range(bandNum)]  # One hash table per band
     
 
         for band in range(bandNum):
             start_row = band * rowNum
-            end_row = (band + 1) * rowNum
+            if band < (bandNum -1):         
+                end_row = (band + 1) * rowNum   
+            else:
+                end_row = self.signature_matrix.shape[0]
+
             band_signature_matrix = self.signature_matrix[start_row: end_row,:]
 
             for col_index in range(self.signature_matrix.shape[1]):
@@ -150,7 +157,7 @@ class NetflixSimiarlity:
 # # print("&"*30)
 # # print(creator.signature_matrix)
 
-# creator.bands_hashing(bandNum=3)
+# creator.bands_hashing(bandNum=3, rowNum = 1)
 # print(creator.candidate_pairs)
 # print(creator.Jaccard_simiarlity(threshold=0))
 
