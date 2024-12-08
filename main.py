@@ -46,7 +46,7 @@ if __name__ == '__main__':
     print("step 3: NetflixSimiarlity_user has been initalized & signature matrix obatining")
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 2)
     print("step 4: signature matrix has been obtained & candidate pairs obtaining")
-    NetflixSimiarlity_user.bands_hashing(bandNum=3, rowNum=1)
+    NetflixSimiarlity_user.bands_hashing(bandNum=2, rowNum=1)
     print("step 5: candidate pairs has been obtained & Jaccard similarity computing")
     #print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
