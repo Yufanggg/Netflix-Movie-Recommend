@@ -25,14 +25,22 @@ class NetflixSimiarlity:
         
         # get the indices of rows
         # print(permutated_user_movie_sparse_coo)
-        row_indices, col_indices = permutated_user_movie_sparse_coo.row,  permutated_user_movie_sparse_coo.col
+        row_indices, col_indices = permutated_user_movie_sparse_coo.row, permutated_user_movie_sparse_coo.col
         # print(row_indices, col_indices)
         
         # List comprehension to get the smallest row index for each unique column index
-        sorted_smallest_row_indices = [min(row_index for row_index, col_index in zip(row_indices, col_indices) 
-                                           if col_index == unique_col_index)
-                                       for unique_col_index in sorted(set(col_indices))]
-        # print(sorted_smallest_row_indices)
+        # Group row indices by column indices
+        col_to_row_indices = defaultdict(list)
+        for row_index, col_index in zip(row_indices, col_indices):
+            col_to_row_indices[col_index].append(row_index)
+        # Get the smallest row index for each unique column index
+        sorted_smallest_row_indices = [
+            min(col_to_row_indices[col]) for col in sorted(col_to_row_indices)]    
+
+        # sorted_smallest_row_indices = [min(row_index for row_index, col_index in zip(row_indices, col_indices) 
+        #                                    if col_index == unique_col_index)
+        #                                for unique_col_index in sorted(set(col_indices))]
+        # # print(sorted_smallest_row_indices)
         return(sorted_smallest_row_indices)
     
     def create_signature_matrix_sparse_parallel(self, num_permutations = 100):
@@ -102,10 +110,6 @@ class NetflixSimiarlity:
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket
                     candidate_pairs.update(combinations(bucket, 2))
-
-                    # for i in range(len(bucket)):
-                    #     for j in range(i + 1, len(bucket)):
-                    #         candidate_pairs.add((bucket[i], bucket[j]))
                             
         # Output candidate pairs
         self.candidate_pairs = candidate_pairs
