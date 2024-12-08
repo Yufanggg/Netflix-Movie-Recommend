@@ -1,22 +1,29 @@
 import numpy as np
 
 data=np.load('user_movie_rating.npy')
-print(data[100])
+# print(data[100])
 
 # caluacte similarity
 def Jaccard_Similarity(user1, user2):
-    ins = 0
-    un_len=0
-    for i,j in zip(user1,user2):
-        if i !=0 and j!=0:
-            ins+=1
-        if i!=0 or j!=0:
-            un_len+=1
-    similarity=ins/un_len
-    return similarity
+    non_zero_user1 = user1 > 0
+    non_zero_user2 = user2 > 0
 
-user1=(0,5,4,0,3,0)
-user2=(5,4,3,0,0,0)
-print(Jaccard_Similarity(user1,user2))
+
+    intersection = np.sum(non_zero_user1 & non_zero_user2)
+    union = np.sum(non_zero_user1 | non_zero_user2)
+
+
+    jaccard_similarity = intersection / union
+    return jaccard_similarity
+
+def get_data(data,userId):
+    user_ratings = data[userId].toarray().flatten()
+    return user_ratings
+
+# user1=np.array([0,5,4,0,3,0])
+# user2=np.array([5,4,3,0,0,0])
+# user1 = np.array([0, 5, 4, 0, 3, 0])
+# user2 = np.array([5, 4, 3, 0, 0, 0])
+# print(Jaccard_Similarity(user1,user2))
 
 
