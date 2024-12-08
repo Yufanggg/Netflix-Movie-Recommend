@@ -55,9 +55,11 @@ if __name__ == '__main__':
     print("this is my user_movie_matrix")
     print(user_movie_matrix)
     movie_user_matrix = user_movie_matrix.T
+    del data, user_movie, user_movie_matrix # delet the unnecessary variables to save memory
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_matrix)
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 1000)
-    NetflixSimiarlity_user.bands_hashing(bandNum=5)
+    NetflixSimiarlity_user.bands_hashing(bandNum=1)
+    print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
     end_time = time.time()
     print(filtered_Jaccard)
