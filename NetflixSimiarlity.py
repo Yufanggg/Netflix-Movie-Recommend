@@ -19,8 +19,6 @@ class NetflixSimiarlity:
         """
         this function intends to use the sparse matrix
         """
-
-
         # conduct the row-base permutation
         permutated_user_movie_sparse= self.user_movie_sparse[permutation, :]
         # Convert the result back to CSR format if you need
@@ -38,8 +36,6 @@ class NetflixSimiarlity:
         # Filter out infinite values and get the smallest row index for each column
         sorted_smallest_row_indices = smallest_row_indices[smallest_row_indices != float('inf')]    
    
-
-
         return(sorted_smallest_row_indices)
     
     def create_signature_matrix_sparse_parallel(self, num_permutations = 100):
@@ -62,7 +58,7 @@ class NetflixSimiarlity:
         """
 
         local_hash_table = defaultdict(list)
-        for col_index in range(self.num_movie):
+        for col_index in range(band_signature_matrix.shape[1]):
             band_signature = band_signature_matrix[:, col_index].tobytes()
             hash_value = hashlib.md5(band_signature).hexdigest()
             local_hash_table[hash_value].append(col_index)
@@ -78,28 +74,25 @@ class NetflixSimiarlity:
         """
         
         # Process each band and hash columns
-        hash_tables = []
-        for band in range(bandNum):
+        candidate_pairs = set()
+        for band in tqdm(range(bandNum), desc="Processing"):
             start_row = band * rowNum
             end_row = (band + 1) * rowNum if band < (bandNum - 1) else self.signature_matrix.shape[0]
 
             # Get the sub-matrix for the current band
             band_signature_matrix = self.signature_matrix[start_row: end_row,:]
             local_hash_table = self.process_band(band_signature_matrix)
-            hash_tables.append(local_hash_table)
-            
-        # find the candidate pairs
-        candidate_pairs = set()
-        for band, hash_table in tqdm(enumerate(hash_tables), total=bandNum, desc="Generating candidate pairs"):#enumerate(hash_tables):
-            for bucket in hash_table.values():
+
+            #  Extract candidate pairs from the hash table
+            for bucket in local_hash_table.values():
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket
                     for pair in combinations(bucket, 2):
                         # print(pair)
                         candidate_pairs.add(pair)
-                            
-        # Output candidate pairs
+ 
         self.candidate_pairs = candidate_pairs
+
 
     def Jaccard_simiarlity(self, threshold = 0.5):
         Jaccard_simiarlity = []
