@@ -4,6 +4,7 @@ import hashlib
 from NetflixSimiarlity import NetflixSimiarlity
 import time
 from scipy.sparse import csr_matrix, csc_matrix
+import matplotlib.pyplot as plt
 
 
 def create_user_movie_matrix(data):
@@ -45,10 +46,21 @@ if __name__ == '__main__':
     del data, user_movie, user_movie_matrix, movie_user_matrix # delet the unnecessary variables to save memory
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_sparse)
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 100)
-    NetflixSimiarlity_user.bands_hashing(bandNum=1)
+    NetflixSimiarlity_user.bands_hashing(bandNum=3)
     #print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
     end_time = time.time()
-    print(filtered_Jaccard)
+    print(len(filtered_Jaccard))
+    ordered_filter_Jaccard = sorted([item[-1] for item in filtered_Jaccard])
+
+    plt.scatter(range(len(filtered_Jaccard)), ordered_filter_Jaccard, colour = "blue")
+    plt.xlabel("Most similar pairs")
+    plt.ylabel("Last values")
+
+
+    with open ("result.txt", "w") as file:
+        for item in filtered_Jaccard:
+            file.write(f"{item}\n")
+
     execution_time = end_time - start_time
     print(f"Execution Time: {execution_time:.4f} seconds")
