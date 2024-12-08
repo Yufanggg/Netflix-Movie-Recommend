@@ -17,13 +17,11 @@ class NetflixSimiarlity:
         """
         this function intends to use the sparse matrix
         """
-        # Convert to CSC format (more efficient for column slicing)
-        user_movie_sparse_csc = self.user_movie_sparse.tocsc()
 
         # conduct the row-base permutation
-        permutated_user_movie_sparse_csc= user_movie_sparse_csc[permutation, :]
+        permutated_user_movie_sparse= self.user_movie_sparse[permutation, :]
         # Convert the result back to CSR format if you need
-        permutated_user_movie_sparse_coo = permutated_user_movie_sparse_csc.tocoo()
+        permutated_user_movie_sparse_coo = permutated_user_movie_sparse.tocoo()
         
         # get the indices of rows
         # print(permutated_user_movie_sparse_coo)
@@ -49,10 +47,11 @@ class NetflixSimiarlity:
         #     print(signature_matrix)
 
         signature_matrix = Parallel(n_jobs=-1, backend='threading')(
-            delayed(self.process_column_sparse)(permutation) for permutation in permutations
+            delayed(self.process_column_sparse)(permutation) for permutation in tqdm(permutations, desc="Processing")
             )
 
         self.signature_matrix = np.array(signature_matrix)
+
 
     def process_band(self, band, rowNum):
         """
@@ -98,7 +97,7 @@ class NetflixSimiarlity:
             
         # find the candidate pairs
         candidate_pairs = set()
-        for band, hash_table in enumerate(hash_tables):
+        for band, hash_table in tqdm(enumerate(hash_tables), total=bandNum, desc="Generating candidate pairs"):#enumerate(hash_tables):
             for bucket in hash_table.values():
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket

@@ -31,6 +31,7 @@ def create_user_movie_matrix(data):
 
 if __name__ == '__main__':
     np.random.seed(123456)
+    print("step 1: data has been read")
     start_time = time.time()
     data = np.load('user_movie_rating.npy')
     user_movie = create_user_movie_matrix(data)
@@ -40,13 +41,13 @@ if __name__ == '__main__':
     movie_user_matrix = user_movie_matrix.T
     movie_user_sparse = csr_matrix(movie_user_matrix) # # Sparse matrix in CSR format
     del data, user_movie, user_movie_matrix, movie_user_matrix # delet the unnecessary variables to save memory
-    print("step 1: user_movie_matrix has been obtained")
+    print("step 2: user_movie_matrix has been obtained & NetflixSimiarlity_user start")
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_sparse)
-    print("step 2: NetflixSimiarlity_user has been initalized")
+    print("step 2: NetflixSimiarlity_user has been initalized & signature matrix obatining")
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 100)
-    print("step 3: signature matrix has been obtained")
+    print("step 3: signature matrix has been obtained & candidate pairs obtaining")
     NetflixSimiarlity_user.bands_hashing(bandNum=3)
-    print("step 4: candidate pairs has been obtained")
+    print("step 4: candidate pairs has been obtained & Jaccard similarity computing")
     #print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
     print("step 5: Jaccard similarities has been obtained")
