@@ -14,6 +14,7 @@ class NetflixSimiarlity:
         self.user_movie_sparse = user_movie_sparse
         self.num_user = self.user_movie_sparse.shape[0]
         self.num_movie = self.user_movie_sparse.shape[1]
+        self.user_movie_sparse_csc = self.user_movie_sparse.tocsc()
         self.random_state = np.random.RandomState(seed)  
 
     def generate_permutations(self, num_permutations: int):
@@ -100,23 +101,23 @@ class NetflixSimiarlity:
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket
                     for pair in combinations(bucket, 2):
-                        # print(pair)
                         candidate_pairs.add(pair)
         self.candidate_pairs = candidate_pairs
 
     def Jaccard_simiarlity(self, pair): 
         col_1, col_2 = pair
-        obj_1, obj_2 = self.user_movie_sparse[:, col_1], self.user_movie_sparse[:, col_2]
-        
+        obj_1, obj_2 = self.user_movie_sparse_csc[:, col_1], self.user_movie_sparse_csc[:, col_2]
         # Nonzero row indices for each column (direct sparse access)
-        indices_1 = set(obj_1.indices)  # Faster than converting to COO
+        indices_1 = set(obj_1.indices) 
         indices_2 = set(obj_2.indices)
+
         
         # Compute Jaccard similarity
         intersection = len(indices_1 & indices_2)
         union = len(indices_1 | indices_2)
         similarity = intersection / union if union > 0 else 0
         
+        # print(intersection, union)
         return (col_1, col_2, similarity)
 
 
@@ -142,9 +143,9 @@ class NetflixSimiarlity:
 # creator = NetflixSimiarlity(csr_matrix(user_movie_matrix))
 
 # # Create the signature matrix with 3 permutations
-# creator.create_signature_matrix_sparse_parallel(num_permutations=3)
+# creator.create_signature_matrix_sparse_parallel(num_permutations=10)
 # # print("&"*30)
-# # print(creator.signature_matrix)
+# print(creator.signature_matrix_csr)
 
 # creator.bands_hashing(bandNum=3, rowNum=1)
 # print(creator.candidate_pairs)
