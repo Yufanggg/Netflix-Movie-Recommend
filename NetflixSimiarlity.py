@@ -1,103 +1,110 @@
 # all necessary packages
 import numpy as np
 import hashlib
+import random
 from collections import defaultdict
 from joblib import Parallel, delayed
 from scipy.sparse import coo_matrix
-from scipy.sparse import csr_matrix
-
-from multiprocessing import Pool
-
+from itertools import combinations
+from tqdm import tqdm
+from scipy.sparse import csr_matrix, csc_matrix
 
 class NetflixSimiarlity:
-    def __init__(self, user_movie_matrix):
-        self.user_movie_matrix = user_movie_matrix
-    
+    def __init__(self, user_movie_sparse):
+        self.user_movie_sparse = user_movie_sparse
+        self.num_user = self.user_movie_sparse.shape[0]
+        self.num_movie = self.user_movie_sparse.shape[1]
 
-    def process_column_sparse(self, col, permutation):
+    def process_column_sparse(self, permutation):
         """
         this function intends to use the sparse matrix
-        """  
-        # print(col, "==="*10, permutation)
-        # Get the column as a dense array
-        column_data = self.user_movie_matrix[:, col]
-        # print("column_data:", column_data)
-        # Convert to a sparse column in COO format
-        column = coo_matrix(column_data).tocoo()
+        """
+        # conduct the row-base permutation
+        permutated_user_movie_sparse= self.user_movie_sparse[permutation, :]
+        # Convert the result back to CSR format if you need
+        permutated_user_movie_sparse_coo = permutated_user_movie_sparse.tocoo()
         
-        # print("column:", column) 
-        if column.nnz > 0:      
-            row_indices = column.col # get the row indices of the non-zero entries in the column
-            # print(row_indices)
-            # print (np.min(permutation[row_indices]))
-            return np.min(permutation[row_indices])
-        return np.inf
+        # get the indices of rows
+        # print(permutated_user_movie_sparse_coo)
+        row_indices, col_indices = permutated_user_movie_sparse_coo.row, permutated_user_movie_sparse_coo.col
+        # print(row_indices, col_indices)
+        
+        smallest_row_indices = np.full(self.num_movie, float('inf'))
+        # Iterate through the row and column indices
+        for row_index, col_index in zip(row_indices, col_indices):    
+            smallest_row_indices[col_index] = min(smallest_row_indices[col_index], row_index)
+        # Filter out infinite values and get the smallest row index for each column
+        sorted_smallest_row_indices = smallest_row_indices[smallest_row_indices != float('inf')]    
+   
+        return(sorted_smallest_row_indices)
     
-    def create_signature_matrix_sparse_parallel(self, num_permutations = 1000):
+    def create_signature_matrix_sparse_parallel(self, num_permutations = 100):
         """
         this function intends to obtain the signature matrix from the user_movie_matrix
         """
-        num_users, num_movies = self.user_movie_matrix.shape
-        permutations = np.array([np.random.permutation(num_users) for _ in range(num_permutations)])
-        # results = []
-        # for col in range(num_movies):
-        #     column_results = []
-        #     for permutation in permutations:
-        #         column_results.append(self.process_column_sparse(col, permutation))
-        #     results.append(column_results)
+        
+        permutations = np.array([np.random.permutation(self.num_user) for _ in range(num_permutations)])
 
-        # signature_matrix = np.array(results).T
-        results = np.array(Parallel(n_jobs=-1, backend='threading')(
-            delayed(self.process_column_sparse)(col, permutation) 
-            for col in range(num_movies) 
-            for permutation in permutations
-            )).T
-        signature_matrix = results.reshape(num_permutations, num_movies)
-        self.signature_matrix = signature_matrix
+        signature_matrix = Parallel(n_jobs=-1, backend='threading')(
+            delayed(self.process_column_sparse)(permutation) for permutation in tqdm(permutations, desc="Processing")
+            )
 
-    def bands_hashing(self, bandNum):
+        self.signature_matrix = np.array(signature_matrix)
+
+
+    def process_band(self, band_signature_matrix):
+        """
+        Processes one band and returns a local hash table for that band.
+        """
+
+        local_hash_table = defaultdict(list)
+        for col_index in range(band_signature_matrix.shape[1]):
+            band_signature = band_signature_matrix[:, col_index].tobytes()
+            hash_value = hashlib.md5(band_signature).hexdigest()
+            local_hash_table[hash_value].append(col_index)
+
+        return local_hash_table
+
+
+    
+    def bands_hashing(self, bandNum, rowNum):
         """
         This function intends to obtain the possible similarity columns via LHS out of the signature matrix
         bandNum and rowNum is the way to partiate the signature matrix. row number of the signature matrix = bandNum * rowNum
         """
-
-        hash_tables = [defaultdict(list) for _ in range(bandNum)]  # One hash table per band
-        rowNum = self.signature_matrix.shape[0]//bandNum
-        if self.signature_matrix.shape[0] % bandNum != 0:         
-            raise ValueError("The total number of rows in signature matrix must be divisible by bandNum.")
-
-        for band in range(bandNum):
-            start_row = band * rowNum
-            end_row = (band + 1) * rowNum
-            band_signature_matrix = self.signature_matrix[start_row: end_row,]
-
-            for col_index in range(self.signature_matrix.shape[1]):
-                band_signature = band_signature_matrix[:, col_index].tobytes()  # Create a tuple representing the signature for this item
-                hash_value = hashlib.md5(band_signature).hexdigest()  # Use a hash function (e.g., Python's built-in hash function)
-                # Add the column (item index) to the hash bucket for this band
-                hash_tables[band][hash_value].append(col_index)
-            
-        # find the candidate pairs
+        
+        # Process each band and hash columns
         candidate_pairs = set()
-        for band, hash_table in enumerate(hash_tables):
-            for bucket in hash_table.values():
+        for band in tqdm(range(bandNum), desc="Processing"):
+            start_row = band * rowNum
+            end_row = (band + 1) * rowNum if band < (bandNum - 1) else self.signature_matrix.shape[0]
+
+            # Get the sub-matrix for the current band
+            band_signature_matrix = self.signature_matrix[start_row: end_row,:]
+            local_hash_table = self.process_band(band_signature_matrix)
+
+            #  Extract candidate pairs from the hash table
+            for bucket in local_hash_table.values():
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket
-                    for i in range(len(bucket)):
-                        for j in range(i + 1, len(bucket)):
-                            candidate_pairs.add((bucket[i], bucket[j]))
-                            
-        # Output candidate pairs
+                    for pair in combinations(bucket, 2):
+                        # print(pair)
+                        candidate_pairs.add(pair)
+ 
         self.candidate_pairs = candidate_pairs
+
 
     def Jaccard_simiarlity(self, threshold = 0.5):
         Jaccard_simiarlity = []
         for (col_1, col_2) in self.candidate_pairs:
-            obj_1, obj_2 = self.user_movie_matrix[:, col_1], self.user_movie_matrix[:, col_2]
-            # print(obj_1, obj_2)
-            interction = np.sum(np.logical_and(obj_1, obj_2))
-            union = np.sum(np.logical_or(obj_1, obj_2))
-            Jaccard = interction/union
+            obj_1, obj_2 = self.user_movie_sparse[:, col_1], self.user_movie_sparse[:, col_2]
+            row_indices_obj_1, row_indices_obj_2 = obj_1.tocoo().row, obj_2.tocoo().row
+            # print(row_indices_obj_2, row_indices_obj_1)
+
+            set1, set2 = set(row_indices_obj_1), set(row_indices_obj_2)
+            interction = set1 & set2
+            union = set1 | set2
+            Jaccard = len(interction)/len(union)
             Jaccard_simiarlity.append((col_1, col_2, Jaccard))
 
         filtered_Jaccard = [tup for tup in Jaccard_simiarlity if tup[2] > threshold]
@@ -116,16 +123,14 @@ class NetflixSimiarlity:
 # ])
 
 # # Create an instance of SignatureMatrixCreator
-# creator = NetflixSimiarlity(user_movie_matrix)
+# creator = NetflixSimiarlity(csr_matrix(user_movie_matrix))
 
 # # Create the signature matrix with 3 permutations
-# creator.create_signature_matrix_sparse_parallel(num_permutations = 10)
-# # creator.create_signature_matrix_sparse_parallel(num_permutations=10)
-# print("&"*30)
-# print(creator.signature_matrix.shape[0])
-# print(creator.signature_matrix)
+# creator.create_signature_matrix_sparse_parallel(num_permutations=3)
+# # print("&"*30)
+# # print(creator.signature_matrix)
 
-# creator.bands_hashing(bandNum=10)
+# creator.bands_hashing(bandNum=3, rowNum = 1)
 # print(creator.candidate_pairs)
 # print(creator.Jaccard_simiarlity(threshold=0))
 
