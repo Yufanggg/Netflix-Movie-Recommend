@@ -5,6 +5,7 @@ from NetflixSimiarlity import NetflixSimiarlity
 import time
 from scipy.sparse import csr_matrix, csc_matrix
 import matplotlib.pylab as plt
+import multiprocessing
 
 
 def create_user_movie_matrix(data):
@@ -40,12 +41,14 @@ if __name__ == '__main__':
     print("step 2: user_movie_matrix has been obtained & NetflixSimiarlity_user start")
     NetflixSimiarlity_user = NetflixSimiarlity(movie_user_csr)
     print("step 3: NetflixSimiarlity_user has been initalized & signature matrix obatining")
-    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 90)
+    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 98)
+    print(f"Signature matrix: {NetflixSimiarlity_user.signature_matrix_csr.shape}")
     print("step 4: signature matrix has been obtained & candidate pairs obtaining")
-    NetflixSimiarlity_user.bands_hashing(bandNum=6, rowNum=15)
+    NetflixSimiarlity_user.bands_hashing(bandNum=14, rowNum=7)
+    print(f"Total number of candidate pairs: {len(NetflixSimiarlity_user.candidate_pairs)}")
     print("step 5: candidate pairs has been obtained & Jaccard similarity computing")
     #print(NetflixSimiarlity_user.candidate_pairs)
-    filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity_parallel(threshold = 0.5)
+    filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity_parallel()
     print("step 6: Jaccard similarities has been obtained")
     end_time = time.time()
     print(len(filtered_Jaccard))

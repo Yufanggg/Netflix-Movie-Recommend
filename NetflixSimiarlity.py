@@ -8,6 +8,7 @@ from scipy.sparse import coo_matrix
 from itertools import combinations
 from tqdm import tqdm
 from scipy.sparse import csr_matrix, csc_matrix
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class NetflixSimiarlity:
     def __init__(self, user_movie_sparse, seed = 42):
@@ -63,6 +64,8 @@ class NetflixSimiarlity:
         
         self.signature_matrix_csr = csr_matrix(signature_matrix)
 
+
+
     def process_band(self, band_signature_matrix_csr):
         """
         Processes one band and returns a local hash table for that band.
@@ -77,32 +80,55 @@ class NetflixSimiarlity:
         return local_hash_table
         
 
-    
-
     def bands_hashing(self, bandNum, rowNum):
         """
-        This function intends to obtain the possible similarity columns via LHS out of the signature matrix
-        bandNum and rowNum is the way to partiate the signature matrix. row number of the signature matrix = bandNum * rowNum
+        Obtains possible similarity columns via LHS out of the signature matrix.
+        bandNum and rowNum partition the signature matrix. 
+        The row number of the signature matrix = bandNum * rowNum.
         """
-        
-        # Process each band and hash columns
         candidate_pairs = set()
-        for band in tqdm(range(bandNum), desc="Computing the band hashing"):
+
+        def process_single_band(band):
             start_row = band * rowNum
-            end_row = (band + 1) * rowNum 
+            end_row = (band + 1) * rowNum
+            band_signature_matrix_csr = self.signature_matrix_csr[start_row:end_row, :]
+            return self.process_band(band_signature_matrix_csr)
 
-            # Get the sub-matrix for the current band
-            band_signature_matrix_csr = self.signature_matrix_csr[start_row: end_row,:]
-            local_hash_table = self.process_band(band_signature_matrix_csr)
+        with ThreadPoolExecutor() as executor:
+            futures = {executor.submit(process_single_band, band): band for band in range(bandNum)}
+            for future in tqdm(as_completed(futures), total=bandNum, desc="Computing the band hashing"):
+                local_hash_table = future.result()
+                for bucket in local_hash_table.values():
+                    if len(bucket) > 1:
+                        for pair in combinations(bucket, 2):
+                            candidate_pairs.add(pair)
 
-            #  Extract candidate pairs from the hash table
-            
-            for bucket in local_hash_table.values():
-                if len(bucket) > 1:
-                    # Generate all pairs of items in this bucket
-                    for pair in combinations(bucket, 2):
-                        candidate_pairs.add(pair)
         self.candidate_pairs = candidate_pairs
+
+    # def bands_hashing(self, bandNum, rowNum):
+    #     """
+    #     This function intends to obtain the possible similarity columns via LHS out of the signature matrix
+    #     bandNum and rowNum is the way to partiate the signature matrix. row number of the signature matrix = bandNum * rowNum
+    #     """
+        
+    #     # Process each band and hash columns
+    #     candidate_pairs = set()
+    #     for band in tqdm(range(bandNum), desc="Computing the band hashing"):
+    #         start_row = band * rowNum
+    #         end_row = (band + 1) * rowNum 
+
+    #         # Get the sub-matrix for the current band
+    #         band_signature_matrix_csr = self.signature_matrix_csr[start_row: end_row,:]
+    #         local_hash_table = self.process_band(band_signature_matrix_csr)
+
+    #         #  Extract candidate pairs from the hash table
+            
+    #         for bucket in local_hash_table.values():
+    #             if len(bucket) > 1:
+    #                 # Generate all pairs of items in this bucket
+    #                 for pair in combinations(bucket, 2):
+    #                     candidate_pairs.add(pair)
+    #     self.candidate_pairs = candidate_pairs
 
     def Jaccard_simiarlity(self, pair): 
         col_1, col_2 = pair
@@ -115,18 +141,18 @@ class NetflixSimiarlity:
         # Compute Jaccard similarity
         intersection = len(indices_1 & indices_2)
         union = len(indices_1 | indices_2)
-        similarity = intersection / union if union > 0 else 0
+        similarity = intersection / union if union != 0 else 0
         
         # print(intersection, union)
         return (col_1, col_2, similarity)
 
 
-    def Jaccard_simiarlity_parallel(self, threshold = 0.5):
+    def Jaccard_simiarlity_parallel(self):
         Jaccards = Parallel(n_jobs=-1)(delayed(self.Jaccard_simiarlity)(pair) 
                                        for pair in tqdm(self.candidate_pairs, desc="Computing Jaccard Similarity"))
         
-        filtered_Jaccard = [res for res in Jaccards if res[2] > threshold]
-        return(filtered_Jaccard)
+        # filtered_Jaccard = [res for res in Jaccards if res[2] > threshold]
+        return(Jaccards)
 
 
 # # testing code for the signature_matrix
@@ -143,12 +169,12 @@ class NetflixSimiarlity:
 # creator = NetflixSimiarlity(csr_matrix(user_movie_matrix))
 
 # # Create the signature matrix with 3 permutations
-# creator.create_signature_matrix_sparse_parallel(num_permutations=10)
+# creator.create_signature_matrix_sparse_parallel(num_permutations=3)
 # # print("&"*30)
 # print(creator.signature_matrix_csr)
 
 # creator.bands_hashing(bandNum=3, rowNum=1)
-# print(creator.candidate_pairs)
+# # print(creator.candidate_pairs)
 # print(creator.Jaccard_simiarlity_parallel(threshold=0))
 
 
