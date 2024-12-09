@@ -4,7 +4,6 @@ import hashlib
 from NetflixSimiarlity import NetflixSimiarlity
 import time
 from scipy.sparse import csr_matrix, csc_matrix
-import matplotlib.pyplot as plt
 
 
 def create_user_movie_matrix(data):
@@ -32,15 +31,6 @@ if __name__ == '__main__':
     print("step 1: data has been read")
     start_time = time.time()
     data = np.load('user_movie_rating.npy')
-<<<<<<< HEAD
-    user_movie_csr = create_user_movie_matrix(data)
-
-    print("user_movie_matrix has been obtained")
-    movie_user_csr = user_movie_csr.transpose()
-    NetflixSimiarlity_user = NetflixSimiarlity(movie_user_csr)
-    NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 10)
-    NetflixSimiarlity_user.bands_hashing(bandNum=10, rowNum=1)
-=======
     user_movie = create_user_movie_matrix(data)
     user_movie_matrix = user_movie.toarray()
     # Now you can save it or perform operations as needed
@@ -55,7 +45,6 @@ if __name__ == '__main__':
     print("step 4: signature matrix has been obtained & candidate pairs obtaining")
     NetflixSimiarlity_user.bands_hashing(bandNum=1, rowNum=2)
     print("step 5: candidate pairs has been obtained & Jaccard similarity computing")
->>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
     #print(NetflixSimiarlity_user.candidate_pairs)
     filtered_Jaccard = NetflixSimiarlity_user.Jaccard_simiarlity(threshold = 0.5)
     print("step 6: Jaccard similarities has been obtained")
