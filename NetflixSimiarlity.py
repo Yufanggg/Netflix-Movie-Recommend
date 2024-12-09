@@ -12,11 +12,14 @@ from scipy.sparse import csr_matrix, csc_matrix
 class NetflixSimiarlity:
     def __init__(self, user_movie_sparse):
         self.user_movie_sparse = user_movie_sparse
+        self.num_user = self.user_movie_sparse.shape[0]
+        self.num_movie = self.user_movie_sparse.shape[1]
 
     def process_column_sparse(self, permutation):
         """
         this function intends to use the sparse matrix
         """
+<<<<<<< HEAD
 
         # Conduct the row-based permutation directly on the CSR matrix
         permutated_user_movie_sparse_csr = self.user_movie_sparse[permutation, :]
@@ -27,26 +30,59 @@ class NetflixSimiarlity:
         return sorted_smallest_row_indices
 
 
+=======
+        # conduct the row-base permutation
+        permutated_user_movie_sparse= self.user_movie_sparse[permutation, :]
+        # Convert the result back to CSR format if you need
+        permutated_user_movie_sparse_coo = permutated_user_movie_sparse.tocoo()
+        
+        # get the indices of rows
+        # print(permutated_user_movie_sparse_coo)
+        row_indices, col_indices = permutated_user_movie_sparse_coo.row, permutated_user_movie_sparse_coo.col
+        # print(row_indices, col_indices)
+        
+        smallest_row_indices = np.full(self.num_movie, float('inf'))
+        # Iterate through the row and column indices
+        for row_index, col_index in zip(row_indices, col_indices):    
+            smallest_row_indices[col_index] = min(smallest_row_indices[col_index], row_index)
+        # Filter out infinite values and get the smallest row index for each column
+        sorted_smallest_row_indices = smallest_row_indices[smallest_row_indices != float('inf')]    
+   
+        return(sorted_smallest_row_indices)
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
     
     def create_signature_matrix_sparse_parallel(self, num_permutations = 100):
         """
         this function intends to obtain the signature matrix from the user_movie_matrix
         """
+<<<<<<< HEAD
         num_users = self.user_movie_sparse.shape[0]
         permutations = np.array([np.random.permutation(num_users) for _ in range(num_permutations)])
+=======
+        
+        permutations = np.array([np.random.permutation(self.num_user) for _ in range(num_permutations)])
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
 
         signature_matrix = Parallel(n_jobs=-1, backend='threading')(
-            delayed(self.process_column_sparse)(permutation) for permutation in permutations
+            delayed(self.process_column_sparse)(permutation) for permutation in tqdm(permutations, desc="Processing")
             )
         
         self.signature_matrix_csr = csr_matrix(signature_matrix)
 
+<<<<<<< HEAD
     def process_band(self, band_signature_matrix_csr):
+=======
+        self.signature_matrix = np.array(signature_matrix)
+
+
+    def process_band(self, band_signature_matrix):
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
         """
         Processes one band and returns a local hash table for that band.
         """
 
         local_hash_table = defaultdict(list)
+<<<<<<< HEAD
         for col_index in range(band_signature_matrix_csr.shape[1]):
             col_data = band_signature_matrix_csr[:, col_index]
             band_signature_col = (tuple(col_data.data), tuple(col_data.indices))
@@ -58,6 +94,17 @@ class NetflixSimiarlity:
 
     
 
+=======
+        for col_index in range(band_signature_matrix.shape[1]):
+            band_signature = band_signature_matrix[:, col_index].tobytes()
+            hash_value = hashlib.md5(band_signature).hexdigest()
+            local_hash_table[hash_value].append(col_index)
+
+        return local_hash_table
+
+
+    
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
     def bands_hashing(self, bandNum, rowNum):
         """
         This function intends to obtain the possible similarity columns via LHS out of the signature matrix
@@ -68,6 +115,7 @@ class NetflixSimiarlity:
         candidate_pairs = set()
         for band in tqdm(range(bandNum), desc="Processing"):
             start_row = band * rowNum
+<<<<<<< HEAD
             end_row = (band + 1) * rowNum if band < (bandNum - 1) else self.signature_matrix_csr.shape[0]
 
             # Get the sub-matrix for the current band
@@ -76,13 +124,26 @@ class NetflixSimiarlity:
 
             #  Extract candidate pairs from the hash table
             
+=======
+            end_row = (band + 1) * rowNum if band < (bandNum - 1) else self.signature_matrix.shape[0]
+
+            # Get the sub-matrix for the current band
+            band_signature_matrix = self.signature_matrix[start_row: end_row,:]
+            local_hash_table = self.process_band(band_signature_matrix)
+
+            #  Extract candidate pairs from the hash table
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
             for bucket in local_hash_table.values():
                 if len(bucket) > 1:
                     # Generate all pairs of items in this bucket
                     for pair in combinations(bucket, 2):
                         # print(pair)
                         candidate_pairs.add(pair)
+<<<<<<< HEAD
 
+=======
+ 
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
         self.candidate_pairs = candidate_pairs
 
 
@@ -121,7 +182,11 @@ class NetflixSimiarlity:
 # # print("&"*30)
 # # print(creator.signature_matrix)
 
+<<<<<<< HEAD
 # creator.bands_hashing(bandNum=3, rowNum=1)
+=======
+# creator.bands_hashing(bandNum=3, rowNum = 1)
+>>>>>>> a5e2495833cca7799baa741a7abe062874e8aab1
 # print(creator.candidate_pairs)
 # print(creator.Jaccard_simiarlity(threshold=0))
 
