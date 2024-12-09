@@ -10,10 +10,26 @@ from tqdm import tqdm
 from scipy.sparse import csr_matrix, csc_matrix
 
 class NetflixSimiarlity:
-    def __init__(self, user_movie_sparse):
+    def __init__(self, user_movie_sparse, seed = 42):
         self.user_movie_sparse = user_movie_sparse
         self.num_user = self.user_movie_sparse.shape[0]
         self.num_movie = self.user_movie_sparse.shape[1]
+        self.random_state = np.random.RandomState(seed)  
+
+    def generate_permutations(self, num_permutations: int):
+        """
+        Generator for user index permutations.
+        
+        Args:
+            num_permutations (int): Number of permutations to generate.
+            
+        Yields:
+            np.ndarray: A single user index permutation.
+        """
+        for _ in range(num_permutations):
+            yield self.random_state.permutation(self.num_user)
+
+    
 
     def process_column_sparse(self, permutation):
         """
@@ -23,10 +39,12 @@ class NetflixSimiarlity:
         # Conduct the row-based permutation directly on the CSR matrix
         permutated_user_movie_sparse_csr = self.user_movie_sparse[permutation, :]
         row_indices, col_indices = permutated_user_movie_sparse_csr.nonzero()
-        unique_col_indices = np.unique(col_indices)    
-        sorted_smallest_row_indices = [np.min(row_indices[col_indices == col]) for col in unique_col_indices]
+
+        # Efficient computation of smallest row indices for each column
+        unique_col_indices, first_occurrence_indices = np.unique(col_indices, return_index=True)
+        smallest_row_indices = row_indices[first_occurrence_indices]
         
-        return sorted_smallest_row_indices
+        return smallest_row_indices
 
 
     
@@ -34,12 +52,13 @@ class NetflixSimiarlity:
         """
         this function intends to obtain the signature matrix from the user_movie_matrix
         """
-        num_users = self.user_movie_sparse.shape[0]
-        permutations = np.array([np.random.permutation(num_users) for _ in range(num_permutations)])
 
-        signature_matrix = Parallel(n_jobs=-1, backend='threading')(
-            delayed(self.process_column_sparse)(permutation) for permutation in tqdm(permutations, desc="Processing")
-            )
+        permutation_generator = self.generate_permutations(num_permutations)
+        # Process permutations in parallel to create the signature matrix
+        signature_matrix = Parallel(n_jobs=-1)(
+            delayed(self.process_column_sparse)(permutation) 
+            for permutation in tqdm(permutation_generator, total=num_permutations, desc="Computing the Signature Matrix")
+        )
         
         self.signature_matrix_csr = csr_matrix(signature_matrix)
 
@@ -50,9 +69,8 @@ class NetflixSimiarlity:
 
         local_hash_table = defaultdict(list)
         for col_index in range(band_signature_matrix_csr.shape[1]):
-            col_data = band_signature_matrix_csr[:, col_index]
-            band_signature_col = (tuple(col_data.data), tuple(col_data.indices))
-            hash_value = hash(band_signature_col)
+            col_data = band_signature_matrix_csr[:, col_index].data
+            hash_value = hash(col_data.tobytes())#, tuple(col_data.indices))
             local_hash_table[hash_value].append(col_index)
 
         return local_hash_table
@@ -68,9 +86,9 @@ class NetflixSimiarlity:
         
         # Process each band and hash columns
         candidate_pairs = set()
-        for band in tqdm(range(bandNum), desc="Processing"):
+        for band in tqdm(range(bandNum), desc="Computing the band hashing"):
             start_row = band * rowNum
-            end_row = (band + 1) * rowNum if band < (bandNum - 1) else self.signature_matrix_csr.shape[0]
+            end_row = (band + 1) * rowNum 
 
             # Get the sub-matrix for the current band
             band_signature_matrix_csr = self.signature_matrix_csr[start_row: end_row,:]
@@ -86,21 +104,27 @@ class NetflixSimiarlity:
                         candidate_pairs.add(pair)
         self.candidate_pairs = candidate_pairs
 
+    def Jaccard_simiarlity(self, pair): 
+        col_1, col_2 = pair
+        obj_1, obj_2 = self.user_movie_sparse[:, col_1], self.user_movie_sparse[:, col_2]
+        
+        # Nonzero row indices for each column (direct sparse access)
+        indices_1 = set(obj_1.indices)  # Faster than converting to COO
+        indices_2 = set(obj_2.indices)
+        
+        # Compute Jaccard similarity
+        intersection = len(indices_1 & indices_2)
+        union = len(indices_1 | indices_2)
+        similarity = intersection / union if union > 0 else 0
+        
+        return (col_1, col_2, similarity)
 
-    def Jaccard_simiarlity(self, threshold = 0.5):
-        Jaccard_simiarlity = []
-        for (col_1, col_2) in self.candidate_pairs:
-            obj_1, obj_2 = self.user_movie_sparse[:, col_1], self.user_movie_sparse[:, col_2]
-            row_indices_obj_1, row_indices_obj_2 = obj_1.tocoo().row, obj_2.tocoo().row
-            # print(row_indices_obj_2, row_indices_obj_1)
 
-            set1, set2 = set(row_indices_obj_1), set(row_indices_obj_2)
-            interction = set1 & set2
-            union = set1 | set2
-            Jaccard = len(interction)/len(union)
-            Jaccard_simiarlity.append((col_1, col_2, Jaccard))
-
-        filtered_Jaccard = [tup for tup in Jaccard_simiarlity if tup[2] > threshold]
+    def Jaccard_simiarlity_parallel(self, threshold = 0.5):
+        Jaccards = Parallel(n_jobs=-1)(delayed(self.Jaccard_simiarlity)(pair) 
+                                       for pair in tqdm(self.candidate_pairs, desc="Computing Jaccard Similarity"))
+        
+        filtered_Jaccard = [res for res in Jaccards if res[2] > threshold]
         return(filtered_Jaccard)
 
 
@@ -124,7 +148,7 @@ class NetflixSimiarlity:
 
 # creator.bands_hashing(bandNum=3, rowNum=1)
 # print(creator.candidate_pairs)
-# print(creator.Jaccard_simiarlity(threshold=0))
+# print(creator.Jaccard_simiarlity_parallel(threshold=0))
 
 
 
