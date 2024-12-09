@@ -11,7 +11,7 @@ _hash_range = (1 << 32)
 
 
 class Minhash(object):
-    def __init__(self,d=128,seed=42,hashfunc=sha1_hash32,hashvalues=None,permutations=None):
+    def __init__(self,d=150,seed=42,hashfunc=sha1_hash32,hashvalues=None,permutations=None):
             if hashvalues is not None:
                 d=len(hashvalues)
             self.seed=seed

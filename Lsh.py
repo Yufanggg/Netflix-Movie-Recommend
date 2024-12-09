@@ -43,7 +43,7 @@ def _optimal_param(threshold, num_perm, false_positive_weight,
 
 class MinHashLSH(object):
 
-    def __init__(self, threshold=0.9, d=128, weights=(0.5, 0.5),
+    def __init__(self, threshold=0.5, d=128, weights=(0.5, 0.5),
                  params=None, storage_config=None):
         if storage_config is None:
             storage_config = {'type': 'dict'}
