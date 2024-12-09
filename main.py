@@ -4,6 +4,7 @@ import hashlib
 from NetflixSimiarlity import NetflixSimiarlity
 import time
 from scipy.sparse import csr_matrix, csc_matrix
+import matplotlib.pylab as plt
 
 
 def create_user_movie_matrix(data):
@@ -31,15 +32,13 @@ if __name__ == '__main__':
     print("step 1: data has been read")
     start_time = time.time()
     data = np.load('user_movie_rating.npy')
-    user_movie = create_user_movie_matrix(data)
-    user_movie_matrix = user_movie.toarray()
+    user_movie_csr = create_user_movie_matrix(data)
     # Now you can save it or perform operations as needed
     # user_movie = load_npz("./user_movie.npz")
-    movie_user_matrix = user_movie_matrix.T
-    movie_user_sparse = csr_matrix(movie_user_matrix) # # Sparse matrix in CSR format
-    del data, user_movie, user_movie_matrix, movie_user_matrix # delet the unnecessary variables to save memory
+    movie_user_csr = user_movie_csr.transport()
+    del data, user_movie_csr # delet the unnecessary variables to save memory
     print("step 2: user_movie_matrix has been obtained & NetflixSimiarlity_user start")
-    NetflixSimiarlity_user = NetflixSimiarlity(movie_user_sparse)
+    NetflixSimiarlity_user = NetflixSimiarlity(movie_user_csr)
     print("step 3: NetflixSimiarlity_user has been initalized & signature matrix obatining")
     NetflixSimiarlity_user.create_signature_matrix_sparse_parallel(num_permutations = 10)
     print("step 4: signature matrix has been obtained & candidate pairs obtaining")
