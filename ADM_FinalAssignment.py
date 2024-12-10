@@ -109,8 +109,6 @@ def minhash_signature_with_permutations_parallel(user_movie_matrix, permutations
 
 
 
-
-
 '''## LSH Banding Technique:
 We divide the signatures into n bands and split them into chunks and hash before putting them in buckets.
 The idea is similar pairs will end up in the same bucket thanks to hashing.
@@ -269,7 +267,7 @@ def compute_jaccard_similarity_parallel(similar_users, user_movie_matrix, thresh
         tasks = [(u1, u2, shm.name, indices, indptr, shape, threshold) for u1, u2 in batch]
 
         # Use multiprocessing pool
-        with Pool(num_workers) as pool:
+        with Pool(num_workers//2) as pool:
             results = pool.map(jaccard_similarity_task, tasks)
 
         # Filter out None results and extend to the global result
@@ -317,7 +315,7 @@ if __name__ == "__main__":
 	num_permutations = 100
 	num_bands = 16
 	rows_per_band = 6
-	num_workers = cpu_count()//2
+	num_workers = cpu_count()
 	print(f"num_workers: {num_workers}, num_permutations:{num_permutations}, num_bands: {num_bands}, rows_per_band: {rows_per_band}")
 
 	permutations = generate_permutations(num_permutations, num_movies, seed)
